@@ -1,0 +1,1375 @@
+Certainly! I’ll guide you on how to define relationships between tables in Prisma, along with examples to illustrate how it works. Prisma handles relationships similarly to Mongoose but with some differences in syntax. Here’s an overview of common relationships (one-to-one, one-to-many, and many-to-many) and how to define them in Prisma.
+
+### 1. **One-to-One Relationship**
+
+Let’s start with an example of a one-to-one relationship between `User` and `Profile`:
+
+```prisma
+
+model User {
+  id       Int     @id @default(autoincrement())
+  name     String
+  email    String  @unique
+  password String
+  profile  Profile? @relation(fields: [profileId], references: [id])
+  profileId Int?    // Foreign key field to link User and Profile
+}
+
+model Profile {
+  id      Int     @id @default(autoincrement())
+  bio     String?
+  user    User?   @relation(fields: [userId], references: [id])
+  userId  Int?    // Foreign key field to link Profile and User
+}
+```
+
+- **Explanation**:
+  - `User` has a `profile` field of type `Profile?`, indicating that a `User` may or may not have a `Profile` (optional relationship).
+  - `profileId` in `User` and `userId` in `Profile` are foreign key fields.
+  - `@relation(fields: [profileId], references: [id])` tells Prisma to link `User` to `Profile` using `profileId` and the primary key `id` in `Profile`.
+
+### 2. **One-to-Many Relationship**
+
+In a one-to-many relationship, one `User` can have multiple `Post`s. Here’s how to define it:
+
+```prisma
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
+  posts Post[] // A User can have multiple posts
+}
+
+model Post {
+  id       Int    @id @default(autoincrement())
+  title    String
+  content  String?
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId Int    // Foreign key field linking Post to User
+}
+```
+
+- **Explanation**:
+  - In `User`, the `posts` field is an array of `Post` (denoted by `Post[]`), representing that a user can have multiple posts.
+  - In `Post`, the `authorId` field links each post to the `User` table’s `id`.
+  - The `@relation(fields: [authorId], references: [id])` in `Post` specifies the relationship by connecting `authorId` in `Post` to `id` in `User`.
+
+### 3. **Many-to-Many Relationship**
+
+For a many-to-many relationship, such as between `Student` and `Course`, you’ll need to use a join table. Prisma allows you to define many-to-many relationships directly with an implicit join table.
+
+```prisma
+model Student {
+  id       Int      @id @default(autoincrement())
+  name     String
+  courses  Course[] @relation("StudentCourses")
+}
+
+model Course {
+  id       Int       @id @default(autoincrement())
+  title    String
+  students Student[] @relation("StudentCourses")
+}
+```
+
+- **Explanation**:
+  - Here, both `Student` and `Course` reference each other as arrays, meaning each student can be enrolled in multiple courses, and each course can have multiple students.
+  - Prisma will automatically create a join table behind the scenes to handle this many-to-many relationship.
+
+### 4. **Running a Migration**
+
+After defining the models and relationships, you can create the tables in the database:
+
+1. **Run a Migration**:
+   ```bash
+   npx prisma migrate dev --name add-relations
+   ```
+
+2. This will update your database schema and create the tables with the defined relationships.
+
+3. **Check Your Tables**:
+   Use `npx prisma studio` or a database management tool (like pgAdmin) to verify that your relationships and tables were created as expected.
+
+### Example Querying in Prisma
+
+Let’s say you want to query a user and their posts. Here’s how you could do it using Prisma in your NestJS service:
+
+```typescript
+import { PrismaService } from './prisma.service';
+
+@Injectable()
+export class UserService {
+  constructor(private prisma: PrismaService) {}
+
+  async getUserWithPosts(userId: number) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { posts: true },  // Include related posts in the query result
+    });
+  }
+}
+```
+
+This query will retrieve a `User` along with all related `Post` entries for that user.
+
+### Summary
+
+- Define relationships using `@relation` in the `schema.prisma` file.
+- Use `Post[]` for one-to-many and `Course[]` on both sides for many-to-many.
+- Run migrations to create these tables in the database.
+- Query relationships with the `include` option in Prisma.
+
+Let me know if you need more help with NestJS or Prisma syntax!
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+  @Delete(':id')
+  @ApiOkResponse({ type: SuperAdminEntity })
+  @ApiOperation({ summary: 'Delete a Super admin by ID' })
+  deleteMyProfile(@ActiveUser('id') userId: number) {
+    return this.superAdminsService.remove(userId);
+  }
+
+ async remove(id: number): Promise<{ success: boolean; message: string }> {
+    try {
+      this.prisma.superAdmin.delete({
+        where: { id: Number(id) },
+      });
+
+      return {
+        success: true,
+        message: 'Your Account Deletion successful.',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return {
+          success: false,
+          message: 'User not found. Deletion failed.',
+        };
+      }
+      throw new InternalServerErrorException('An unexpected error occurred.');
+    }
+  }
+
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+@Get('profile')
+getProfile(@ActiveUser() user: ActiveUserData) {
+  return user;
+}
+
+@Get('profile/id')
+getUserId(@ActiveUser('id') userId: string) {
+  return userId;
+}
+
+@Get('my-role')
+  @ApiOkResponse({ type: RoleEntity })
+  @ApiOperation({ summary: 'Get the role of the current user' })
+  getMyRole(@ActiveUser('role') role: Role) {
+    return this.rolesService.findOne(role.id); // Assuming `role` has an `id` property
+  }
+
+
+  // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  
+  // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  
+  // ------------------------------------------------------------------
+  // ------------------------------------------------------------------
+  
+  // ------------------------------------------------------------------
+
+  // ------------------------------------------------------------------
+
+  // This is your Prisma schema file,
+  // learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+  // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+  // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+  generator client {
+    provider = "prisma-client-js"
+  }
+
+  datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+  }
+
+  // ------------------------------------------------------------------
+  //   00. ENUM FOR REUSE
+  // ------------------------------------------------------------------
+  enum Gender {
+    male
+    female
+    other
+  }
+
+  enum AppAccessStatus {
+    pending
+    approved
+    rejected
+  }
+
+  enum ClassroomRole {
+    classIncharge
+    subjectIncharge
+  }
+
+  enum ClassroomStatus {
+    pending
+    approved
+    rejected
+  }
+  enum AttendanceStatus {
+    present
+    absent
+    late
+    excused
+  }
+
+  // ------------------------------------------------------------------
+  //   01.  SUPR ADMIN MODEL 
+  // ------------------------------------------------------------------
+ model SuperAdmin {
+  id       Int      @id @default(autoincrement())
+  userId   Int      @unique
+  school   School[]
+
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+  // ------------------------------------------------------------------
+  //   02.  ROLE MODEL 
+  // ------------------------------------------------------------------
+  model Role {
+    id    Int    @id @default(autoincrement())
+    name  String @unique // Values: "SuperAdmin", "Admin", "Principal", "Staff", "Student"
+    users User[]
+  }
+
+
+  // ------------------------------------------------------------------
+  //   03.  USER MODEL 
+  // ------------------------------------------------------------------
+  model User {
+    id          Int      @id @default(autoincrement())
+    name        String
+    email       String   @unique
+    password    String
+    roleId      Int
+    role        Role     @relation(fields: [roleId], references: [id])
+    superAdmin  SuperAdmin?
+    admin       Admin?
+    principal   Principal?
+    staff       Staff?
+    student     Student?
+    createdAt          DateTime @default(now())
+    updatedAt          DateTime @updatedAt
+  }
+
+  // ------------------------------------------------------------------
+  //   04.   SCHOOL MODEL 
+  // ------------------------------------------------------------------
+  model School {
+    id           Int         @id @default(autoincrement())
+    name         String
+    address      String 
+    superAdminId Int?
+    adminId      Int?         @unique
+    principalId  Int?         @unique
+    staff        Staff[]
+    students     Student[]
+    createdAt    DateTime     @default(now())
+
+    superAdmin    SuperAdmin? @relation(fields: [superAdminId], references: [id], map: "School_SuperAdmin_fkey")
+    admin         Admin?      @relation("SchoolAdminRelation", fields: [adminId], references: [id], map: "School_Admin_fkey")
+    principal     Principal?  @relation("SchoolPrincipalRelation", fields: [principalId], references: [id], map: "School_Principal_fkey")
+  }
+
+
+  // ------------------------------------------------------------------
+  //   05.   ADMIN MODEL FOR ONE SCHOOL 
+  // ------------------------------------------------------------------
+model Admin {
+  id       Int      @id @default(autoincrement())
+  userId   Int      @unique
+  school   School?  @relation("SchoolAdminRelation")
+
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   06.   PRINCIPAL INFO MODEL  
+// ------------------------------------------------------------------
+model Principal {
+  id       Int      @id @default(autoincrement())
+  userId   Int      @unique
+  school   School?  @relation("SchoolPrincipalRelation")
+  
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   07.   STAFF INFO MODEL 
+// ------------------------------------------------------------------
+model Staff {
+  id       Int     @id @default(autoincrement())
+  userId   Int     @unique
+  schoolId Int
+  user     User    @relation(fields: [userId], references: [id])
+  school   School  @relation(fields: [schoolId], references: [id])
+}
+
+
+// ------------------------------------------------------------------
+//   08.   STUDENT INFO MODEL 
+// ------------------------------------------------------------------
+model Student {
+  id       Int     @id @default(autoincrement())
+  userId   Int     @unique
+  schoolId Int
+
+  user     User    @relation(fields: [userId], references: [id])
+  school   School  @relation(fields: [schoolId], references: [id])
+}
+
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+
+
+
+async create(createUserDto: CreateUserDto, userTokenRoleId: number, userTokenRoleName: string): Promise<User> {
+  try {
+    // Check if email is already in use
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: createUserDto.email },
+    });
+    if (existingUser) {
+      throw new ConflictException('Email already in use');
+    }
+
+    // Verify role ID and name match from token
+    const role = await this.prisma.role.findFirst({
+      where: {
+        id: userTokenRoleId,
+        name: {
+          equals: userTokenRoleName,
+          mode: 'insensitive',
+        },
+      },
+    });
+    if (!role) {
+      throw new BadRequestException('Invalid role information in token');
+    }
+
+    // Create the user with role ID
+    const user = await this.prisma.user.create({
+      data: {
+        name: createUserDto.name,
+        email: createUserDto.email,
+        password: createUserDto.password,
+        roleId: role.id,
+      },
+    });
+
+    // Link user to the appropriate role-specific table
+    await this.createUserWithRole(user, createUserDto.roleName);
+
+    return user;
+  } catch (error) {
+    console.error(`Error creating user: ${error.message}`);
+    throw new InternalServerErrorException('Failed to create user');
+  }
+}
+
+ private async createUserWithRole(user, roleName: string): Promise<void> {
+    switch (roleName) {
+      case 'Admin':
+        await this.prisma.admin.create({ data: { userId: user.id } });
+        break;
+      case 'Principal':
+        await this.prisma.principal.create({ data: { userId: user.id } });
+        break;
+      case 'Staff':
+        await this.prisma.staff.create({
+          data: { userId: user.id, schoolId: someSchoolId },
+        }); // Replace `someSchoolId` with actual school ID
+        break;
+      case 'Student':
+        await this.prisma.student.create({
+          data: { userId: user.id, schoolId: someSchoolId },
+        }); // Replace `someSchoolId` with actual school ID
+        break;
+      case 'SUPER_ADMIN':
+        await this.prisma.superAdmin.create({ data: { userId: user.id } });
+        break;
+      default:
+        throw new BadRequestException(`Invalid role: ${roleName}`);
+    }
+  }
+
+  // Main function to create a new user
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    try {
+      // Check if email is already in use
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: createUserDto.email },
+      });
+      if (existingUser) {
+        throw new ConflictException('Email already in use');
+      }
+
+      // Fetch role ID based on role name
+      const role = await this.prisma.role.findFirst({
+        where: {
+          name: {
+            equals: createUserDto.roleName,
+            mode: 'insensitive', // Makes the query case-insensitive
+          },
+        },
+      });
+      if (!role) {
+        throw new BadRequestException(
+          `Role ${createUserDto.roleName} does not exist`,
+        );
+      }
+
+      // Optionally hash the password before saving it
+      // const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+      // Create the user with role ID
+      const user = await this.prisma.user.create({
+        data: {
+          name: createUserDto.name,
+          email: createUserDto.email,
+          password: createUserDto.password,
+          roleId: role.id,
+        },
+      });
+
+      // Link user to the appropriate role-specific table
+      await this.createUserWithRole(user, createUserDto.roleName);
+
+      return user;
+    } catch (error) {
+      console.error(`Error creating user: ${error.message}`);
+      throw new InternalServerErrorException('Failed to create user');
+    }
+  }import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+
+import { CreateSuperAdminDto } from './dto/create-super-admin.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { UpdateSuperAdminDto } from './dto/update-super-admin.dto';
+import { SuperAdminEntity } from './entities/super-admin.entity';
+
+@Injectable()
+export class SuperAdminsService {
+  constructor(private prisma: PrismaService) {}
+
+  create(createSuperAdminDto: CreateSuperAdminDto): Promise<SuperAdminEntity> {
+    return this.prisma.superAdmin.create({
+      data: createSuperAdminDto,
+    });
+  }
+
+  // Get all super admin
+  async findAll(): Promise<SuperAdminEntity[]> {
+    return this.prisma.superAdmin.findMany();
+  }
+
+  // Get a super admin by ID
+  async findOne(id: number): Promise<SuperAdminEntity | null> {
+    return this.prisma.superAdmin.findUnique({
+      where: { id: Number(id) },
+    });
+  }
+
+  // Update a super admin by ID
+  async update(
+    id: number,
+    updateSuperAdminDto: UpdateSuperAdminDto,
+  ): Promise<SuperAdminEntity> {
+    return this.prisma.superAdmin.update({
+      where: { id: Number(id) },
+      data: updateSuperAdminDto,
+    });
+  }
+
+  // Delete a super admin by ID
+  async remove(id: number): Promise<SuperAdminEntity> {
+    return this.prisma.superAdmin.delete({
+      where: { id: Number(id) },
+    });
+  }
+}
+ 
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import {
+  InvalidateRefreshTokenError,
+  RefreshTokenIdsStorage,
+} from './refresh-token-ids.storage/refresh-token-ids.storage';
+import { HashingService } from './hashing/hashing.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
+import { RegisterDto } from './dto/register';
+import { User } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { RoleEntity } from 'src/roles/entities/role.entity';
+
+import jwtConfig from './config/jwt.config';
+import { ConfigType } from '@nestjs/config';
+import { ActiveUserData } from 'src/authentication/interfaces/active-user-data.inteface';
+import { RefreshTokenDto } from './dto/refresh-tokem.dto';
+
+@Injectable()
+export class AuthenticationService {
+  constructor(
+    // private readonly hashingService: HashingService,
+    private prisma: PrismaService,
+    // private jwtService: JwtService,
+    // @Inject(jwtConfig.KEY)
+    // private jwtConfiguration: ConfigType<typeof jwtConfig>,
+    // private readonly refreshTokenIdsStorage: RefreshTokenIdsStorage,
+  ) {}
+
+  // ------------------------------------------------------------------
+  //   02. LOGIN FUNCTION
+  // ------------------------------------------------------------------
+
+  async login(loginDto: LoginDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: loginDto.email },
+      include: { role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found Dude');
+    }
+
+    console.log(user.password);
+    console.log(loginDto.password);
+
+    // const isEqual = await this.hashingService.compare(
+    //   loginDto.password,
+    //   user.password,
+    // );
+    // if (!isEqual) {
+    //   throw new UnauthorizedException('Passwor Does Not Match');
+    // }
+
+    if (loginDto.password !== user.password) {
+      throw new UnauthorizedException('Password Does Not Match');
+    }
+
+    return { message: 'Login successful' };
+    // return await this.generateTokens(user);
+  }
+
+
+  // // ------------------------------------------------------------------
+  // //   03. REFRESH TOKEN FUNCTION
+  // // ------------------------------------------------------------------
+  // async refreshTokens(refreshTokenDto: RefreshTokenDto) {
+  //   try {
+  //     const { sub, refreshTokenId } = await this.jwtService.verifyAsync<
+  //       Pick<ActiveUserData, 'sub'> & { refreshTokenId: string }
+  //     >(refreshTokenDto.refreshToken, {
+  //       secret: this.jwtConfiguration.secret,
+  //       audience: this.jwtConfiguration.audience,
+  //       issuer: this.jwtConfiguration.issuer,
+  //     });
+
+  //     const user = await this.prisma.user.findFirst({
+  //       where: { id: sub },
+  //       include: { role: true },
+  //     });
+
+  //     const isValid = await this.refreshTokenIdsStorage.validate(
+  //       user.id,
+  //       refreshTokenId,
+  //     );
+
+  //     if (isValid) {
+  //       await this.refreshTokenIdsStorage.invalidate(user.id);
+  //     } else {
+  //       throw new Error('Refresh Token Is Invalidate');
+  //     }
+
+  //     return await this.generateTokens(user);
+  //   } catch (err) {
+  //     if (err instanceof InvalidateRefreshTokenError) {
+  //       throw new UnauthorizedException('Access denied');
+  //     }
+  //     throw new UnauthorizedException();
+  //   }
+  // }
+
+  // // ------------------------------------------------------------------
+  // //   HELPER FUNCTIONS
+  // // ------------------------------------------------------------------
+  // // FOR TOKEN GENERATION
+  // private async generateTokens(user: User & { role: RoleEntity }) {
+  //   const refreshTokenId = randomUUID();
+  //   console.log('user', user);
+
+  //   const currentUser = await this.prisma.user.findFirst({
+  //     where: {
+  //       id: user.id,
+  //     },
+  //     select: {
+  //       id: true,
+  //       email: true,
+  //     },
+  //   });
+
+  //   const [accessToken, RefreshToken] = await Promise.all([
+  //     this.signToken<Partial<ActiveUserData>>(
+  //       user.id,
+  //       this.jwtConfiguration.accessTokenTtl,
+  //       {
+  //         email: user.email,
+  //         roleId: user.role.id,
+  //         roleName: user.role.name,
+  //       },
+  //     ),
+  //     this.signToken(user.id, this.jwtConfiguration.refreshTokenTtl, {
+  //       refreshTokenId,
+  //     }),
+  //   ]);
+  //   await this.refreshTokenIdsStorage.insert(user.id, refreshTokenId);
+
+  //   return { accessToken, RefreshToken, currentUser };
+  // }
+  // // FOR TOKEN KEY TO CUSTOMISE TOKEN VALUES
+  // private async signToken<T>(userId: number, expiresIn: number, payload?: T) {
+  //   return await this.jwtService.signAsync(
+  //     {
+  //       sub: userId,
+  //       ...payload,
+  //     },
+  //     {
+  //       audience: this.jwtConfiguration.audience,
+  //       issuer: this.jwtConfiguration.issuer,
+  //       secret: this.jwtConfiguration.secret,
+  //       expiresIn,
+  //     },
+  //   );
+  // }
+}
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+const config = new DocumentBuilder()
+  .setTitle('Role API')
+  .setDescription('API for managing roles')
+  .setVersion('1.0')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'Bearer',
+      bearerFormat: 'JWT',
+      in: 'header',
+    },
+    'access-token', // This name should match in your controller
+  )
+  .build();
+const document = SwaggerModule.createDocument(app, config);
+
+SwaggerModule.setup('api', app, document, {
+  swaggerOptions: {
+    persistAuthorization: true, // Keeps the token across page reloads
+  },
+});
+
+@ApiBearerAuth('access-token') // Matches the name specified in main.ts
+@UseGuards(AccessTokenGuard)
+@Get('profile')
+@ApiOkResponse()
+getProfile(@Req() request) {
+  const user = request[REQUEST_USER_KEY];
+  return { message: 'Access Token is valid!', user };
+}
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigType } from '@nestjs/config';
+import jwtConfig from './config/jwt.config';
+import { User } from '@prisma/client';
+import { RoleEntity } from 'src/roles/entities/role.entity';
+import { LoginDto } from './dto/login.dto';
+
+@Injectable()
+export class AuthenticationService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+    @Inject(jwtConfig.KEY)
+    private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
+  ) {}
+
+  async login(loginDto: LoginDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: loginDto.email },
+      include: { role: true },
+    });
+
+    if (!user || loginDto.password !== user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Return access and refresh tokens upon successful login
+    return await this.generateTokens(user);
+  }
+
+  // Token generation function without Redis dependency
+  private async generateTokens(user: User & { role: RoleEntity }) {
+    const accessToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        roleId: user.role.id,
+        roleName: user.role.name,
+      },
+      {
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
+        secret: this.jwtConfiguration.secret,
+        expiresIn: this.jwtConfiguration.accessTokenTtl, // TTL for access token
+      },
+    );
+
+    const refreshToken = this.jwtService.sign(
+      {
+        sub: user.id,
+      },
+      {
+        secret: this.jwtConfiguration.secret,
+        expiresIn: this.jwtConfiguration.refreshTokenTtl, // TTL for refresh token
+      },
+    );
+
+    return { accessToken, refreshToken };
+  }
+}
+
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+ async register(
+    createUserDto: CreateUserDto,
+    superAdminDto?: CreateSuperAdminDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const { email, password, roleId } = createUserDto;
+
+    return await this.prisma.$transaction(async (prisma) => {
+      try {
+        // Create the user initially
+        const user = await this.prisma.user.create({
+          data: { email, password, roleId },
+          include: { role: true }, // Include role directly in the user query
+        });
+
+        // Check if role exists and proceed with registration logic
+        if (!user.role) {
+          throw new ConflictException('Invalid role ID');
+        }
+
+        switch (user.role.name) {
+          case 'super_admin':
+            // Ensure the superAdminDto is passed when the role is super_admin
+            if (!superAdminDto || !superAdminDto.name) {
+              throw new ConflictException('SuperAdmin name is required');
+            }
+
+            await this.prisma.superAdmin.create({
+              data: { userId: user.id, name: superAdminDto.name }, // Now using user-provided name
+            });
+
+            break;
+
+            // case 'Admin':
+            //   if (userDto instanceof CreateAdminDto) {
+            //     await this.prisma.admin.create({
+            //       data: {
+            //         userId: user.id,
+            //         name: userDto.name,
+            //         schoolId: userDto.schoolId,
+            //       },
+            //     });
+            //   } else {
+            //     throw new ConflictException('Invalid data for Admin');
+            //   }
+            //   break;
+
+            // case 'Principal':
+            //   if (userDto instanceof CreatePrincipalDto) {
+            //     await this.prisma.principal.create({
+            //       data: {
+            //         userId: user.id,
+            //         name: userDto.name,
+            //         schoolId: userDto.schoolId,
+            //         type: userDto.principalType,
+            //       },
+            //     });
+            //   } else {
+            //     throw new ConflictException('Invalid data for Principal');
+            //   }
+            //   break;
+
+            // case 'Staff':
+            //   if (userDto instanceof CreateStaffDto) {
+            //     await this.prisma.staff.create({
+            //       data: {
+            //         userId: user.id,
+            //         name: userDto.name,
+            //         schoolId: userDto.schoolId,
+            //         type: userDto.staffType,
+            //       },
+            //     });
+            //   } else {
+            //     throw new ConflictException('Invalid data for Staff');
+            //   }
+            //   break;
+
+            // case 'Student':
+            // if (userDto instanceof CreateStudentDto) {
+            //   await this.prisma.student.create({
+            //     data: {
+            //       userId: user.id,
+            //       name: userDto.name,
+            //       schoolId: userDto.schoolId,
+            //     },
+            //   });
+            // } else {
+            //   throw new ConflictException('Invalid data for Student');
+            // }
+            break;
+
+          default:
+            throw new ConflictException('Unhandled role type');
+        }
+
+        return await this.generateTokens(user);
+      } catch (error) {
+        console.error(`Error during registration: ${error.message}`);
+        throw new InternalServerErrorException(
+          'Registration failed, rolling back changes',
+        );
+      }
+    });
+  }
+
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+  async register(
+    createUserDto: CreateUserDto,
+    superAdminDto?: CreateSuperAdminDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const { email, password, roleId } = createUserDto;
+
+    try {
+      return await this.prisma.$transaction(async (prisma) => {
+        // Step 1: Create the user with full role information
+        const user = (await prisma.user.create({
+          data: { email, password, roleId },
+          include: { role: { select: { id: true, name: true } } }, // Include both id and name for role
+        })) as User & { role: RoleEntity }; // Explicitly cast user type with RoleEntity for role
+
+        // Step 2: Validate role existence-
+        if (!user.role) {
+          throw new ConflictException('Invalid role ID');
+        }
+
+        // Step 3: Handle role-specific logic
+        await this.handleRoleSpecificActions(user, superAdminDto);
+
+        // Step 4: Generate and return tokens
+        return this.generateTokens(user);
+      });
+    } catch (error) {
+      console.error(`Error during registration: ${error.message}`);
+      throw new InternalServerErrorException(
+        'Registration failed, rolling back changes',
+      );
+    }
+  }
+
+  // Helper method for role-specific actions
+  private async handleRoleSpecificActions(
+    user: User & { role: { name: string } },
+    superAdminDto: CreateSuperAdminDto | undefined,
+  ): Promise<void> {
+    switch (user.role.name) {
+      case 'super_admin':
+        if (!superAdminDto?.name) {
+          throw new ConflictException('SuperAdmin name is required');
+        }
+        await this.prisma.superAdmin.create({
+          data: { userId: user.id, name: superAdminDto.name },
+        });
+        break;
+
+      case 'Admin':
+        // Add logic for 'Admin' role here if needed
+        break;
+
+      case 'Principal':
+        // Add logic for 'Principal' role here if needed
+        break;
+
+      case 'Staff':
+        // Add logic for 'Staff' role here if needed
+        break;
+
+      case 'Student':
+        // Add logic for 'Student' role here if needed
+        break;
+
+      default:
+        throw new ConflictException('Unhandled role type');
+    }
+  }
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// ------------------------------------------------------------------
+
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
+import { User } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import jwtConfig from './config/jwt.config';
+import { ConfigType } from '@nestjs/config';
+import { RoleEntity } from 'src/administration/roles/entities/role.entity';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { UsersService } from 'src/administration/users/users.service';
+import { RegisterDto } from './dto/register.dto';
+import { InvitationTokenDto } from './dto/invite.dto';
+
+@Injectable()
+export class AuthenticationService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userService: UsersService,
+    private readonly jwtService: JwtService,
+    @Inject(jwtConfig.KEY)
+    private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
+  ) {}
+
+  // ------------------------------------------------------------------
+  //    REGISTERING NEW USER
+  // ------------------------------------------------------------------
+  async register(
+    registerDto: RegisterDto,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    try {
+      const { email, password, roleId, name } = registerDto;
+
+      // Step 1: Create a new user using the `createUser` function in `UserService`
+      const user = await this.userService.createUser({
+        email,
+        password,
+        roleId,
+      });
+
+      // Step 2: Call the helper function to handle role-based record creation
+      await this.createRoleBasedRecord(user.id, roleId, name);
+
+      // Step 3: Generate access and refresh tokens
+      const tokens = await this.generateTokens(user);
+
+      return tokens;
+    } catch (error) {
+      console.error('Error during registration:', error);
+      throw new InternalServerErrorException('Failed to register user');
+    }
+  }
+
+  // ------------------------------------------------------------------
+  //   LOGIN FUNCTION
+  // ------------------------------------------------------------------
+  async login(loginDto: LoginDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: loginDto.email },
+      include: { role: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    if (loginDto.password !== user.password) {
+      throw new UnauthorizedException('Password does not match');
+    }
+
+    return await this.generateTokens(user);
+  }
+
+  // ------------------------------------------------------------------
+  //   REFRESH TOKEN FUNCTION
+  // ------------------------------------------------------------------
+  async refreshTokens(refreshTokenDto: RefreshTokenDto) {
+    const { refreshToken } = refreshTokenDto;
+
+    const tokenRecord = await this.prisma.refreshToken.findFirst({
+      where: { refreshTokenId: refreshToken },
+    });
+
+    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token is invalid or expired');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: tokenRecord.userId },
+      include: { role: true },
+    });
+
+    await this.invalidateRefreshToken(refreshToken);
+    return await this.generateTokens(user);
+  }
+
+  // ------------------------------------------------------------------
+  //   LOGOUT FUNCTION
+  // ------------------------------------------------------------------
+  async logout(userId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      // Verify user existence
+      await this.userService.findUser(userId);
+
+      // Delete refresh tokens for this user
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId },
+      });
+
+      return {
+        success: true,
+        message: 'Logout successful.',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return {
+          success: false,
+          message: 'User not found. Logout failed.',
+        };
+      }
+      throw new InternalServerErrorException('An unexpected error occurred.');
+    }
+  }
+
+  // ------------------------------------------------------------------
+  //  INVITE USER FOR REGISTRATION
+  // ------------------------------------------------------------------
+  async inviteUser(invitationTokenDto: InvitationTokenDto) {
+    const { roleId, schoolId } = invitationTokenDto;
+
+    if (!roleId || !schoolId) {
+      throw new BadRequestException('Role ID and School ID are required');
+    }
+
+    // Generate the invitation token
+    const token = await this.generateInvitationToken(roleId, schoolId);
+
+    // Construct the invitation link
+    const invitationLink = `${process.env.APP_REGISTER_PAGE_URL}/register?token=${token}`;
+
+    return { invitationLink };
+  }
+
+  // ------------------------------------------------------------------
+  //   HELPER FUNCTIONS
+  // ------------------------------------------------------------------
+
+  private async createRoleBasedRecord(
+    userId: number,
+    roleId: number,
+    name: string,
+  ): Promise<void> {
+    try {
+      // Fetch the role by roleId to get the role name
+      const role = await this.prisma.role.findUnique({
+        where: { id: roleId },
+      });
+
+      if (!role) {
+        throw new Error(`Role with ID ${roleId} does not exist`);
+      }
+
+      switch (role.name.toLowerCase()) {
+        case 'super_admin':
+          await this.prisma.superAdmin.create({
+            data: {
+              userId,
+              name,
+            },
+          });
+          break;
+
+        case 'admin':
+          await this.prisma.admin.create({
+            data: {
+              userId,
+              name,
+            },
+          });
+          break;
+
+        case 'staff':
+          await this.prisma.staff.create({
+            data: {
+              userId,
+              name,
+            },
+          });
+          break;
+
+        case 'student':
+          await this.prisma.student.create({
+            data: {
+              userId,
+              name,
+            },
+          });
+          break;
+
+        case 'principal':
+          await this.prisma.principal.create({
+            data: {
+              userId,
+              name,
+            },
+          });
+          break;
+
+        default:
+          throw new Error(`Role "${role.name}" is not supported`);
+      }
+    } catch (error) {
+      console.error('Error during role-based record creation:', error);
+      throw new InternalServerErrorException(
+        'Failed to create role-specific record',
+      );
+    }
+  }
+
+  private async generateTokens(user: User & { role: RoleEntity }) {
+    const refreshTokenId = randomUUID();
+
+    const accessToken = await this.signToken(
+      user.id,
+      this.jwtConfiguration.accessTokenTtl,
+      { email: user.email, roleId: user.role.id, roleName: user.role.name },
+    );
+
+    const refreshToken = await this.signToken(
+      user.id,
+      this.jwtConfiguration.refreshTokenTtl,
+      { refreshTokenId },
+    );
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        refreshTokenId,
+        expiresAt: new Date(
+          Date.now() + this.jwtConfiguration.refreshTokenTtl * 1000,
+        ),
+      },
+    });
+
+    return { accessToken, refreshToken };
+  }
+
+  private async signToken<T>(userId: number, expiresIn: number, payload?: T) {
+    return this.jwtService.signAsync(
+      { sub: userId, ...payload },
+      {
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
+        secret: this.jwtConfiguration.secret,
+        expiresIn,
+      },
+    );
+  }
+
+  private async invalidateRefreshToken(refreshTokenId: string) {
+    await this.prisma.refreshToken.deleteMany({
+      where: { refreshTokenId },
+    });
+  }
+
+  private async generateInvitationToken(
+    roleId: number,
+    schoolId: number,
+  ): Promise<string> {
+    try {
+      // Generate a token with the provided roleId and schoolId
+      const token = await this.signToken(
+        null, // No userId since the user doesn't exist yet
+        this.jwtConfiguration.invitationTokenTtl,
+        { roleId, schoolId },
+      );
+
+      return token;
+    } catch (error) {
+      console.error('Error generating invitation token:', error);
+      throw new InternalServerErrorException(
+        'Failed to generate invitation token',
+      );
+    }
+  }
+}

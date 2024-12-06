@@ -1,0 +1,48 @@
+/* Reset styles */
+body,
+table,
+td,
+p,
+a {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+}
+
+img {
+    border: 0;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Container */
+.container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    background-color: #f0f0f0;
+    padding: 20px;
+    text-align: center;
+}
+
+/* Body */
+.body {
+    padding: 20px;
+}
+
+/* Footer */
+.footer {
+    background-color: #f0f0f0;
+    padding: 20px;
+    text-align: center;
+}
+
+.logo-img {
+    width: 50%;
+}

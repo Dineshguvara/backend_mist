@@ -1,0 +1,169 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+//   00. ENUM FOR REUSE
+// ------------------------------------------------------------------
+
+enum AdminType {
+  SECRETARY
+  CORRESPONDENT
+}
+
+enum PrincipalType {
+  PRINCIPAL
+  VICE_PRINCIPAL
+}
+
+enum StaffType {
+  OFFICE_STAFF
+  SWEEPING_STAFF
+  CLASS_ROOM_STAFF
+}
+
+// ------------------------------------------------------------------
+//   01.  SUPR ADMIN MODEL 
+// ------------------------------------------------------------------
+model SuperAdmin {
+  id     Int      @id @default(autoincrement())
+  name   String
+  userId Int      @unique
+  school School[] // A SuperAdmin can have multiple Schools
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   02.  ROLE MODEL 
+// ------------------------------------------------------------------
+model Role {
+  id            Int    @id @default(autoincrement())
+  name          String @unique
+  createdBy     Int? // Optional field
+  createdByUser User?  @relation("CreatedRoles", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  users User[] @relation("AssignedRoles")
+}
+
+// ------------------------------------------------------------------
+//   03.  USER MODEL 
+// ------------------------------------------------------------------
+model User {
+  id           Int    @id @default(autoincrement())
+  email        String @unique
+  password     String
+  roleId       Int
+  role         Role   @relation("AssignedRoles", fields: [roleId], references: [id])
+  createdRoles Role[] @relation("CreatedRoles")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  superAdmin    SuperAdmin?
+  admin         Admin?
+  principal     Principal?
+  staff         Staff?
+  student       Student?
+  refreshTokens RefreshToken[]
+}
+
+// ------------------------------------------------------------------
+//   04.   REFRESH TOKEN  
+// ------------------------------------------------------------------
+
+model RefreshToken {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  refreshTokenId String
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  user           User     @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   05.   SCHOOL MODEL 
+// ------------------------------------------------------------------
+model School {
+  id         Int     @id @default(autoincrement())
+  name       String
+  address    String?
+  imageUrl   String?
+  createdBy  Int
+
+  superAdmin SuperAdmin? @relation(fields: [createdBy], references: [id], map: "School_SuperAdmin_fkey")
+
+  admins     Admin[] // A school can have multiple admins
+  principals Principal[] // A school can have two principals
+  staff      Staff[] // A school can have multiple staff
+  students   Student[] // A school can have multiple students
+
+  createdAt  DateTime @default(now())
+}
+
+// ------------------------------------------------------------------
+//   06.   ADMIN MODEL FOR ONE SCHOOL 
+// ------------------------------------------------------------------
+model Admin {
+  id       Int       @id @default(autoincrement())
+  name     String
+  userId   Int       @unique
+  schoolId Int
+  type     AdminType? // Enum to distinguish admin roles
+
+  school School @relation(fields: [schoolId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   07.   PRINCIPAL INFO MODEL  
+// ------------------------------------------------------------------
+model Principal {
+  id       Int           @id @default(autoincrement())
+  name     String
+  userId   Int           @unique
+  schoolId Int
+  type     PrincipalType? // Enum to distinguish between Principal and VicePrincipal
+
+  school School @relation(fields: [schoolId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   08.   STAFF INFO MODEL 
+// ------------------------------------------------------------------
+model Staff {
+  id       Int       @id @default(autoincrement())
+  name     String
+  userId   Int       @unique
+  schoolId Int
+  type     StaffType? // Enum to distinguish staff roles
+
+  school School @relation(fields: [schoolId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+// ------------------------------------------------------------------
+//   09.   STUDENT INFO MODEL 
+// ------------------------------------------------------------------
+model Student {
+  id       Int    @id @default(autoincrement())
+  name     String
+  userId   Int    @unique
+  schoolId Int
+
+  user   User   @relation(fields: [userId], references: [id])
+  school School @relation(fields: [schoolId], references: [id])
+}
