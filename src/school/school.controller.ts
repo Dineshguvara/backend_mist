@@ -81,8 +81,20 @@ export class SchoolController {
     return this.schoolService.findAllSchool();
   }
 
+  @Auth(AuthType.None)
+  @Get('school-register')
+  showAllSchool() {
+    return this.schoolService.findAllSchool();
+  }
+
   @Get(':id')
   findOneSchool(@Param('id') id: string) {
+    return this.schoolService.findOneSchool(+id);
+  }
+
+  @Auth(AuthType.None)
+  @Get('school-register/:id')
+  showOneSchool(@Param('id') id: string) {
     return this.schoolService.findOneSchool(+id);
   }
 

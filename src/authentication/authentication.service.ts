@@ -10,26 +10,28 @@ import {
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
-import { User } from '@prisma/client';
-import { randomUUID } from 'crypto';
 import jwtConfig from './config/jwt.config';
 import { ConfigType } from '@nestjs/config';
-import { RoleEntity } from 'src/administration/roles/entities/role.entity';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UsersService } from 'src/administration/users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { InvitationTokenDto } from './dto/invite.dto';
-import * as nodemailer from 'nodemailer';
-import { MailInvitationService } from './invitation_mail.service';
-
+import { EMailService } from './e-mail/e-mail.service';
+import * as jwt from 'jsonwebtoken'; // Ensure jwt package is installed and imported
+import { RoleHelperService } from './helper/role-helper.service';
+import { TokenHelperService } from './helper/token-helper.service';
+import { OtpService } from './otp/otp.service';
 @Injectable()
 export class AuthenticationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly userService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly mailInviService: MailInvitationService,
+    private readonly emailService: EMailService,
+    private readonly roleHelperService: RoleHelperService,
+    private readonly tokenHelperService: TokenHelperService,
+    private readonly OtpService: OtpService,
     @Inject(jwtConfig.KEY)
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
   ) {}
@@ -39,15 +41,9 @@ export class AuthenticationService {
   // ------------------------------------------------------------------
   async register(
     userDto: RegisterDto,
-    token: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ userId: number; accessToken: string; refreshToken: string }> {
     try {
-      // Decode the token and extract data
-      const decodedToken = token ? this.decodeToken(token) : null;
-
-      // Extract roleId and schoolId
-      const roleId = decodedToken?.roleId;
-      const schoolId = decodedToken?.schoolId;
+      const { name, email, password, schoolId, roleId } = userDto;
 
       if (!schoolId) {
         throw new BadRequestException(
@@ -57,16 +53,23 @@ export class AuthenticationService {
 
       // Create a new user
       const user = await this.userService.createUser({
-        email: userDto.email,
-        password: userDto.password,
+        email: email,
+        password: password,
         roleId,
       });
 
       // Perform role-based actions
-      await this.createRoleBasedRecord(user.id, roleId, schoolId, userDto.name);
+      await this.roleHelperService.createRoleBasedRecord(
+        user.id,
+        roleId,
+        schoolId,
+        name,
+      );
 
       // Generate and return tokens
-      return await this.generateTokens(user);
+      const tokens = await this.tokenHelperService.generateTokens(user);
+      console.log('from register function backend', tokens);
+      return tokens;
     } catch (error) {
       console.error('Error during registration:', error);
 
@@ -80,9 +83,92 @@ export class AuthenticationService {
     }
   }
 
+  // async startRegistration(userDto: RegisterDto): Promise<{ message: string }> {
+  //   try {
+  //     const { email } = userDto;
+
+  //     // Check if the email is already in use
+  //     const existingUser = await this.userService.findUserByEmail(email);
+  //     if (existingUser) {
+  //       throw new BadRequestException('Email is already registered.');
+  //     }
+
+  //     // Generate OTP and send it to the user's email
+  //     await this.OtpService.generateOtp(email);
+
+  //     return {
+  //       message: 'OTP has been sent to your email. Please verify to proceed.',
+  //     };
+  //   } catch (error) {
+  //     console.error('Error during registration initiation:', error);
+
+  //     // Throw a generic internal server error if needed
+  //     throw new InternalServerErrorException(
+  //       'Error during registration initiation.',
+  //     );
+  //   }
+  // }
+
+  // async completeRegistration(
+  //   email: string,
+  //   otp: string,
+  //   userDto: RegisterDto,
+  // ): Promise<{ userId: number; accessToken: string; refreshToken: string }> {
+  //   try {
+  //     // Verify the OTP
+  //     const isOtpValid = await this.OtpService.verifyOtp(email, otp);
+  //     if (!isOtpValid) {
+  //       throw new BadRequestException('Invalid or expired OTP.');
+  //     }
+
+  //     const { name, password, schoolId, roleId } = userDto;
+
+  //     if (!schoolId) {
+  //       throw new BadRequestException(
+  //         'School ID is required for registration.',
+  //       );
+  //     }
+
+  //     // Create a new user
+  //     const user = await this.userService.createUser({
+  //       email: email,
+  //       password: password,
+  //       roleId,
+  //     });
+
+  //     // Perform role-based actions
+  //     await this.roleHelperService.createRoleBasedRecord(
+  //       user.id,
+  //       roleId,
+  //       schoolId,
+  //       name,
+  //     );
+
+  //     // Delete all OTPs related to this email
+  //     await this.OtpService.deleteOtpByEmail(email);
+
+  //     // Generate and return tokens
+  //     const tokens = await this.tokenHelperService.generateTokens(user);
+
+  //     return tokens;
+  //   } catch (error) {
+  //     console.error('Error during registration completion:', error);
+
+  //     if (error instanceof BadRequestException) {
+  //       throw error;
+  //     }
+
+  //     // Throw a generic internal server error if needed
+  //     throw new InternalServerErrorException(
+  //       'Error during registration completion.',
+  //     );
+  //   }
+  // }
+
   // ------------------------------------------------------------------
   //   LOGIN FUNCTION
   // ------------------------------------------------------------------
+
   async login(loginDto: LoginDto) {
     const user = await this.prisma.user.findFirst({
       where: { email: loginDto.email },
@@ -102,30 +188,69 @@ export class AuthenticationService {
       throw new UnauthorizedException('Password does not match');
     }
 
-    return await this.generateTokens(user);
+    // Generate tokens and include user ID in the response
+    return await this.tokenHelperService.generateTokens(user);
+
+    // return {
+    //   user: { id: user.id, email: user.email, role: user.role },
+    //   ...tokens,
+    // };
   }
 
   // ------------------------------------------------------------------
   //   REFRESH TOKEN FUNCTION
   // ------------------------------------------------------------------
+
   async refreshTokens(refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
-    const tokenRecord = await this.prisma.refreshToken.findFirst({
-      where: { refreshTokenId: refreshToken },
-    });
+    try {
+      // Decode the refresh token to extract refreshTokenId
+      const decoded = jwt.verify(refreshToken, this.jwtConfiguration.secret);
+      const { refreshTokenId } = decoded as { refreshTokenId: string };
 
-    if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token is invalid or expired');
+      if (!refreshTokenId) {
+        console.error('Refresh token ID is missing in the payload.');
+        return false; // Frontend should handle logout
+      }
+
+      // Check if the refresh token exists in the database
+      const tokenRecord = await this.prisma.refreshToken.findFirst({
+        where: { refreshTokenId },
+      });
+
+      if (!tokenRecord) {
+        console.error('Refresh token not found in the database.');
+        return false; // Frontend should handle logout
+      }
+
+      // Check if the refresh token has expired
+      if (tokenRecord.expiresAt < new Date()) {
+        console.error('Refresh token has expired. Invalidating token.');
+        await this.tokenHelperService.invalidateRefreshToken(refreshTokenId);
+        return false; // Frontend should handle logout
+      }
+
+      // If token is valid and not expired, fetch user and generate new tokens
+      const user = await this.prisma.user.findUnique({
+        where: { id: tokenRecord.userId },
+        include: { role: true },
+      });
+
+      if (!user) {
+        console.error('User associated with the refresh token does not exist.');
+        return false; // Frontend should handle logout
+      }
+
+      // Invalidate the current refresh token
+      await this.tokenHelperService.invalidateRefreshToken(refreshTokenId);
+
+      // Generate and return new tokens
+      return await this.tokenHelperService.generateTokens(user);
+    } catch (error) {
+      console.error('Error decoding or processing refresh token:', error);
+      return false; // Frontend should handle logout
     }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: tokenRecord.userId },
-      include: { role: true },
-    });
-
-    await this.invalidateRefreshToken(refreshToken);
-    return await this.generateTokens(user);
   }
 
   // ------------------------------------------------------------------
@@ -168,21 +293,17 @@ export class AuthenticationService {
       );
     }
 
-    // const inviter = await this.userService.findUserById(userId);
-    // if (!inviter || !inviter.) {
-    //   throw new BadRequestException('Inviter email not found');
-    // }
-
-    // const fromEmail = inviter.name;
-
     // Generate the invitation token
-    const token = await this.generateInvitationToken(roleId, schoolId);
+    const token = await this.tokenHelperService.generateInvitationToken(
+      roleId,
+      schoolId,
+    );
 
     // Construct the invitation link
     const invitationLink = `${process.env.APP_REGISTER_PAGE_URL}/authentication/register?token=${token}`;
 
     // Send the email
-    await this.mailInviService.sendInviEmail(
+    await this.emailService.sendInviEmail(
       toEmail,
       roleId,
       schoolId,
@@ -194,155 +315,7 @@ export class AuthenticationService {
 
   // ------------------------------------------------------------------
   //   HELPER FUNCTIONS
-  // ------------------------------------------------------------------
-  // Helper to  role Base creation while register an new user
-  private async createRoleBasedRecord(
-    userId: number,
-    roleId: number,
-    schoolId: number,
-    name: string,
-  ): Promise<void> {
-    try {
-      // Fetch the role by roleId to get the role name
-      const role = await this.prisma.role.findUnique({
-        where: { id: roleId },
-      });
-
-      if (!role) {
-        throw new Error(`Role with ID ${roleId} does not exist`);
-      }
-
-      // Switch based on role name and create the corresponding record
-      switch (role.name.toLowerCase()) {
-        case 'super_admin':
-          await this.prisma.superAdmin.create({
-            data: {
-              userId,
-              name,
-            },
-          });
-          break;
-
-        case 'admin':
-          await this.prisma.admin.create({
-            data: {
-              userId,
-              name,
-              schoolId,
-            },
-          });
-          break;
-
-        case 'principal':
-          await this.prisma.principal.create({
-            data: {
-              userId,
-              name,
-              schoolId,
-            },
-          });
-          break;
-
-        case 'staff':
-          await this.prisma.staff.create({
-            data: {
-              userId,
-              name,
-              schoolId,
-            },
-          });
-          break;
-
-        case 'student':
-          await this.prisma.student.create({
-            data: {
-              userId,
-              name,
-              schoolId,
-            },
-          });
-          break;
-
-        default:
-          throw new Error(`Role "${role.name}" is not supported`);
-      }
-    } catch (error) {
-      console.error('Error during role-based record creation:', error);
-      throw new InternalServerErrorException(
-        'Failed to create role-specific record',
-      );
-    }
-  }
-
-  // Helper to  generate acccess and refresh token
-  private async generateTokens(user: User & { role: RoleEntity }) {
-    const refreshTokenId = randomUUID();
-
-    const accessToken = await this.signToken(
-      user.id,
-      this.jwtConfiguration.accessTokenTtl,
-      { email: user.email, roleId: user.role.id, roleName: user.role.name },
-    );
-
-    const refreshToken = await this.signToken(
-      user.id,
-      this.jwtConfiguration.refreshTokenTtl,
-      { refreshTokenId },
-    );
-
-    await this.prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        refreshTokenId,
-        expiresAt: new Date(
-          Date.now() + this.jwtConfiguration.refreshTokenTtl * 1000,
-        ),
-      },
-    });
-
-    return { accessToken, refreshToken };
-  }
-
-  private async signToken<T>(userId: number, expiresIn: number, payload?: T) {
-    return this.jwtService.signAsync(
-      { sub: userId, ...payload },
-      {
-        audience: this.jwtConfiguration.audience,
-        issuer: this.jwtConfiguration.issuer,
-        secret: this.jwtConfiguration.secret,
-        expiresIn,
-      },
-    );
-  }
-
-  // Helper to check refesh token is validor or not
-  private async invalidateRefreshToken(refreshTokenId: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { refreshTokenId },
-    });
-  }
-
-  // Helper to generate invitation token
-  private async generateInvitationToken(
-    roleId: number,
-    schoolId: number,
-  ): Promise<string> {
-    try {
-      // Generate a token with the provided roleId and schoolId
-      const token = await this.signToken(
-        null, // No userId since the user doesn't exist yet
-        this.jwtConfiguration.invitationTokenTtl,
-        { roleId, schoolId },
-      );
-
-      return token;
-    } catch (error) {
-      console.error('Error generating invitation token:', error);
-      throw new InternalServerErrorException(
-        'Failed to generate invitation token',
-      );
-    }
-  }
+  // -----------------------------------------------------------------
 
   // Helper to decode token
   private decodeToken(

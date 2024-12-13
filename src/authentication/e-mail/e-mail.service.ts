@@ -1,59 +1,44 @@
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
-import { SendEmailDto } from './dto/send-email.dto';
-import { MailerService } from '@nestjs-modules/mailer'; // Assume you're using a mailer module
-import { PrismaService } from 'src/prisma/prisma.service';
+import { MailerService } from '@nestjs-modules/mailer';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class MailService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly mailerService: MailerService,
-  ) {}
+export class EMailService {
+  constructor(private readonly mailerService: MailerService) {}
 
-  // ------------------------------------------------------------------
-  //        SEND INVITATION TOKEN THROUGH EMAIL
-  // ------------------------------------------------------------------
-  async sendInviEmail(sendEmailDto: SendEmailDto) {
-    const { token, fromEmail, toEmail } = sendEmailDto;
-
-    if (!token || !fromEmail || !toEmail) {
-      throw new BadRequestException(
-        'Token, From email, and To email are required',
-      );
+  async sendInviEmail(
+    toEmail: string,
+    roleId: number,
+    schoolId: number,
+    invitationLink: string,
+  ): Promise<void> {
+    try {
+      return await this.mailerService.sendMail({
+        to: toEmail,
+        subject: 'Invitation for Registration',
+        template: 'invitationmail',
+        context: {
+          link: invitationLink,
+          role: roleId,
+          school: schoolId,
+        },
+      });
+    } catch (error) {
+      throw new Error(`Failed to send Invitation email: ${error}`);
     }
-
-    // Delegate to MailService for sending the email
-    return this.sendInvitationEmail(sendEmailDto);
   }
 
-  // ------------------------------------------------------------------
-  //   HELPER FUNCTIONS
-  // ------------------------------------------------------------------
-
-  private async sendInvitationEmail(
-    sendEmailDto: SendEmailDto,
-  ): Promise<{ message: string }> {
-    const { token, fromEmail, toEmail } = sendEmailDto;
-
-    const invitationLink = `${process.env.APP_REGISTER_PAGE_URL}/register?token=${token}`;
-
+  async sendOTPEmail(email: string, otp: string): Promise<void> {
     try {
-      await this.mailerService.sendMail({
-        from: fromEmail,
-        to: toEmail,
-        subject: 'You are invited!',
-        text: `You have been invited to join. Use this link to register: ${invitationLink}`,
-        html: `<p>You have been invited to join. Use this link to register:</p><a href="${invitationLink}">${invitationLink}</a>`,
+      return await this.mailerService.sendMail({
+        to: email,
+        subject: 'OTP for Registration',
+        template: 'otpmail',
+        context: {
+          otp: otp,
+        },
       });
-
-      return { message: 'Invitation email sent successfully' };
     } catch (error) {
-      console.error('Error sending email:', error);
-      throw new InternalServerErrorException('Failed to send invitation email');
+      throw new Error(`Failed to send Invitation email: ${error}`);
     }
   }
 }

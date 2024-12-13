@@ -18,6 +18,7 @@ import {
   ApiTags,
   ApiBearerAuth,
   ApiOkResponse,
+  ApiResponse,
 } from '@nestjs/swagger';
 
 import { AuthenticationService } from './authentication.service';
@@ -35,27 +36,55 @@ import { InvitationTokenDto } from './dto/invite.dto';
 import { Roles } from './decorators/roles/user-role.decorator';
 import { RoleType } from './enums/role-type';
 import { SuperAdminOnly } from './decorators/roles/super-admin-only.decoratot';
+import { OtpService } from './otp/otp.service';
+import { ResendOtpDto } from './dto/otp.dto';
 
 @Auth(AuthType.Bearer)
 @Controller('authentication')
 @ApiTags('authentication')
 export class AuthenticationController {
-  constructor(private readonly authenticationService: AuthenticationService) {}
+  constructor(
+    private readonly authenticationService: AuthenticationService,
+    private readonly OtpService: OtpService,
+  ) {}
 
   @Auth(AuthType.None) // If you want this endpoint to be accessible without authentication
   @Post('register')
   @ApiCreatedResponse({ type: RegisterDto })
-  register(
-    @Query('token') token: string, // Retrieve the JWT token from the query parameter
-    @Body() registerDto: RegisterDto,
-  ) {
-    if (!token) {
-      throw new BadRequestException('Token is required.');
-    }
-
-    // Pass the token and registration data to the authentication service
-    return this.authenticationService.register(registerDto, token);
+  register(@Body() registerDto: RegisterDto) {
+    return this.authenticationService.register(registerDto);
   }
+
+  // @Auth(AuthType.None)
+  // @Post('register/start')
+  // async startRegistration(@Body() userDto: RegisterDto) {
+  //   return this.authenticationService.startRegistration(userDto);
+  // }
+  
+  // @Auth(AuthType.None)
+  // @Post('register/complete')
+  // async completeRegistration(
+  //   @Body()
+  //   {
+  //     email,
+  //     otp,
+  //     userDto,
+  //   }: {
+  //     email: string;
+  //     otp: string;
+  //     userDto: RegisterDto;
+  //   },
+  // ) {
+  //   return this.authenticationService.completeRegistration(email, otp, userDto);
+  // }
+
+  // @Auth(AuthType.None)
+  // @Post('register/resend-otp')
+  // @ApiResponse({ status: 201, description: 'OTP resent successfully.' })
+  // async resendOtp(@Body() dto: ResendOtpDto) {
+  //    const { otp, expiresAt } = await this.OtpService.resendOtp(dto.email);
+  //    return { message: 'OTP resent successfully', otp, expiresAt };
+  // }
 
   @Auth(AuthType.None)
   @HttpCode(HttpStatus.OK)

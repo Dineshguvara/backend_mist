@@ -14,7 +14,6 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
- 
   constructor(private prisma: PrismaService) {}
 
   async createUser(
@@ -51,31 +50,6 @@ export class UsersService {
     }
   }
 
-  // //  create user
-  // async createUser(
-  //   createUserDto: CreateUserDto,
-  // ): Promise<UserEntity & { role: RoleEntity }> {
-  //   try {
-  //     // Check if the email is already in use
-  //     const existingUser = await this.prisma.user.findUnique({
-  //       where: { email: createUserDto.email },
-  //     });
-  //     if (existingUser) {
-  //       throw new ConflictException('Email already in use');
-  //     }
-
-  //     const user = await this.prisma.user.create({
-  //       data: createUserDto,
-  //       include: { role: true }, // Include role details
-  //     });
-  //     return user;
-  //   } catch (error) {
-  //     const err = error as Error;
-  //     console.error(`Error creating user: ${err.message}`);
-  //     throw new InternalServerErrorException('Failed to create user');
-  //   }
-  // }
-
   // Get all users
   async findAllUser(): Promise<UserEntity[]> {
     try {
@@ -92,7 +66,9 @@ export class UsersService {
   }
 
   // Get a specific user by ID
-  async findUserById(id: number): Promise<UserEntity & { role: { name: string } }> {
+  async findUserById(
+    id: number,
+  ): Promise<UserEntity & { role: { name: string } }> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { id },
@@ -107,6 +83,26 @@ export class UsersService {
     } catch (error) {
       console.error(`Error fetching user with ID ${id}:`, error);
       throw new InternalServerErrorException('Failed to fetch user');
+    }
+  }
+
+  // Find a specific user by email
+  async findUserByEmail(email: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        console.warn(`User with email ${email} not found`); // Log for debugging
+        return null; // Return null instead of throwing an exception
+      }
+
+      return user; // Return the full user object, not just the email
+    } catch (error) {
+      const err = error as Error;
+      console.error(`Error fetching user with email ${email}:`, err.message);
+      throw new InternalServerErrorException('Failed to fetch user by email');
     }
   }
 

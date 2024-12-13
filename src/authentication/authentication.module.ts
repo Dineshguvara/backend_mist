@@ -13,8 +13,10 @@ import { AuthenticationGuard } from './guards/authentication/authentication.guar
 import { RolesService } from 'src/administration/roles/roles.service';
 import { UsersService } from 'src/administration/users/users.service';
 import { RolesGuard } from './guards/role/user-role.guard';
-import { MailInvitationService } from './invitation_mail.service';
-
+import { EMailService } from './e-mail/e-mail.service';
+import { RoleHelperService } from './helper/role-helper.service';
+import { TokenHelperService } from './helper/token-helper.service';
+import { OtpService } from './otp/otp.service';
 @Module({
   providers: [
     {
@@ -29,7 +31,10 @@ import { MailInvitationService } from './invitation_mail.service';
     AuthenticationService,
     RolesService,
     UsersService,
-    MailInvitationService,
+    EMailService,
+    RoleHelperService,
+    TokenHelperService,
+    OtpService,
     // {
     //   provide: HashingService,
     //   useClass: BcryptService,

@@ -92,6 +92,18 @@ model RefreshToken {
   expiresAt      DateTime
   user           User     @relation(fields: [userId], references: [id])
 }
+// ------------------------------------------------------------------
+//   04.  OTP MODEL (validate email id)
+// ------------------------------------------------------------------
+
+model otp {
+  id         String   @id @default(cuid()) // Unique identifier for each OTP
+  email      String   // Email address associated with the OTP
+  otp        String   // The OTP itself
+  createdAt  DateTime @default(now()) // Timestamp when the OTP was generated
+  expiresAt  DateTime // Expiration timestamp
+  isUsed     Boolean  @default(false) // Whether the OTP has been used
+}
 
 // ------------------------------------------------------------------
 //   05.   SCHOOL MODEL 

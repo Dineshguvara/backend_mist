@@ -56,6 +56,14 @@ export class RolesController {
     return this.rolesService.findOneRole(+id);
   }
 
+  @Auth(AuthType.None)
+  @Get('role-register/:id')
+  @ApiOkResponse({ type: RoleEntity })
+  @ApiOperation({ summary: 'Get a role by ID' })
+  showOneRole(@Param('id') id: string) {
+    return this.rolesService.findOneRole(+id);
+  }
+
   @Patch(':id')
   @ApiOkResponse({ type: RoleEntity })
   @ApiOperation({ summary: 'Update a role by ID' })

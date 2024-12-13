@@ -5,6 +5,11 @@ export class RegisterDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  name: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
   email: string;
 
   @ApiProperty()
@@ -12,18 +17,15 @@ export class RegisterDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  token?: string;
+ 
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @ApiProperty({ required: false })
   @IsNumber()
-  @IsOptional()
-  schoolId?: number;
+  @IsNotEmpty()
+  schoolId: number;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsNotEmpty()
+  roleId: number;
 }
