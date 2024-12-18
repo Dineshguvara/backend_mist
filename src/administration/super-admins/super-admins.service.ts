@@ -63,6 +63,8 @@ export class SuperAdminsService implements OnModuleInit {
             email: process.env.SUPER_ADMIN_EMAIL,
             password: hashedPassword,
             roleId: superAdminRole.id,
+            schoolId: null,
+            approvalStatus: 'APPROVED',
           },
         });
         // console.log('Super Admin User Created:', superAdminUser);

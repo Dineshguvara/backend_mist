@@ -19,13 +19,16 @@ export class TokenHelperService {
     private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
   ) {}
 
+  // ------------------------------------------------------------------
+  //    GENERATE ACCESS & REFRESH TOKENS
+  // ------------------------------------------------------------------
   async generateTokens(user: User & { role: RoleEntity }) {
     const refreshTokenId = randomUUID();
 
     const accessToken = await this.signToken(
       user.id,
       this.jwtConfiguration.accessTokenTtl,
-      { email: user.email, roleId: user.role.id, roleName: user.role.name },
+      { email: user.email, roleId: user.role.id, roleName: user.role.name, schoolId : user.schoolId, approvalStatus: user.approvalStatus  },
     );
 
     const refreshToken = await this.signToken(
@@ -47,6 +50,9 @@ export class TokenHelperService {
     return { userId: user.id, accessToken, refreshToken };
   }
 
+  // ------------------------------------------------------------------
+  //     SET TOKEN SOME ENCRYTED DATA FOR SECURITY
+  // ------------------------------------------------------------------
   async signToken<T>(userId: number, expiresIn: number, payload?: T) {
     return this.jwtService.signAsync(
       { sub: userId, ...payload },
@@ -59,14 +65,18 @@ export class TokenHelperService {
     );
   }
 
-  // Helper to check refesh token is validor or not
-  async invalidateRefreshToken(refreshTokenId: string) {
+  // ------------------------------------------------------------------
+  //     DELETE REFRESH TOKEN AFTER SUCCESSFULL LOGIN
+  // ------------------------------------------------------------------
+  async removeRefreshToken(refreshTokenId: string) {
     await this.prisma.refreshToken.deleteMany({
       where: { refreshTokenId },
     });
   }
 
-  // Helper to generate invitation token
+  // ------------------------------------------------------------------
+  //     GENERATE INVITE TOKEN FOR REGISTRATION PURPOSE
+  // ------------------------------------------------------------------
   async generateInvitationToken(
     roleId: number,
     schoolId: number,

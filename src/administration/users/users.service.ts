@@ -16,11 +16,48 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  // ------------------------------------------------------------------
+  //   CREATE NEW USER
+  // ------------------------------------------------------------------
+  // async createUser(
+  //   createUserDto: CreateUserDto,
+  // ): Promise<UserEntity & { role: RoleEntity }> {
+  //   try {
+  //     const { email, password, roleId, schoolId } = createUserDto;
+
+  //     // Check if the email is already in use
+  //     const existingUser = await this.prisma.user.findUnique({
+  //       where: { email },
+  //     });
+  //     if (existingUser) {
+  //       throw new ConflictException('Email already in use');
+  //     }
+
+  //     // Hash the password
+  //     const hashedPassword = await bcrypt.hash(password, 10);
+
+  //     const user = await this.prisma.user.create({
+  //       data: {
+  //         email,
+  //         password: hashedPassword,
+  //         roleId,
+  //         schoolId,
+  //       },
+  //       include: { role: true },
+  //     });
+
+  //     return user;
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     console.error('Error creating user:', err.message);
+  //     throw new InternalServerErrorException('Failed to create user');
+  //   }
+  // }
   async createUser(
     createUserDto: CreateUserDto,
   ): Promise<UserEntity & { role: RoleEntity }> {
     try {
-      const { email, password, roleId } = createUserDto;
+      const { email, password, roleId, schoolId } = createUserDto;
 
       // Check if the email is already in use
       const existingUser = await this.prisma.user.findUnique({
@@ -30,14 +67,28 @@ export class UsersService {
         throw new ConflictException('Email already in use');
       }
 
+      // Fetch the role details to check its name
+      const role = await this.prisma.role.findUnique({
+        where: { id: roleId },
+      });
+
+      if (!role) {
+        throw new BadRequestException('Invalid role ID');
+      }
+
       // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      // Set schoolId to null if the role is SUPER_ADMIN
+      const finalSchoolId = role.name === 'SUPER_ADMIN' ? null : schoolId;
+
+      // Create the user
       const user = await this.prisma.user.create({
         data: {
           email,
           password: hashedPassword,
           roleId,
+          schoolId: finalSchoolId,
         },
         include: { role: true },
       });
@@ -50,7 +101,9 @@ export class UsersService {
     }
   }
 
-  // Get all users
+  // ------------------------------------------------------------------
+  //   GET ALL USER
+  // ------------------------------------------------------------------
   async findAllUser(): Promise<UserEntity[]> {
     try {
       return await this.prisma.user.findMany({
@@ -65,7 +118,9 @@ export class UsersService {
     }
   }
 
-  // Get a specific user by ID
+  // ------------------------------------------------------------------
+  //   FIND USER BY ID
+  // ------------------------------------------------------------------
   async findUserById(
     id: number,
   ): Promise<UserEntity & { role: { name: string } }> {
@@ -86,6 +141,9 @@ export class UsersService {
     }
   }
 
+  // ------------------------------------------------------------------
+  //    FIND USER USING EMAIL
+  // ------------------------------------------------------------------
   // Find a specific user by email
   async findUserByEmail(email: string) {
     try {
@@ -106,7 +164,9 @@ export class UsersService {
     }
   }
 
-  // Update a specific user by ID
+  // ------------------------------------------------------------------
+  //    UPDATE USER DETAILS
+  // ------------------------------------------------------------------
   async updateUser(
     id: number,
     updateUserDto: UpdateUserDto,
@@ -130,7 +190,19 @@ export class UsersService {
     }
   }
 
-  // Delete a specific user by ID
+  // ------------------------------------------------------------------
+  //    UPDATE USER PASSWORD
+  // ------------------------------------------------------------------
+  async updatePassword(user: { id: number; password: string }) {
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { password: user.password },
+    });
+  }
+
+  // ------------------------------------------------------------------
+  //   DELETE USER
+  // ------------------------------------------------------------------
   async remove(id: number): Promise<UserEntity> {
     try {
       const user = await this.prisma.user.findUnique({ where: { id } });

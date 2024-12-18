@@ -5,6 +5,9 @@ import { Injectable } from '@nestjs/common';
 export class EMailService {
   constructor(private readonly mailerService: MailerService) {}
 
+  // ------------------------------------------------------------------
+  //    SEND INVITATION THROUGH EMAIL
+  // ------------------------------------------------------------------
   async sendInviEmail(
     toEmail: string,
     roleId: number,
@@ -27,14 +30,17 @@ export class EMailService {
     }
   }
 
-  async sendOTPEmail(email: string, otp: string): Promise<void> {
+  // ------------------------------------------------------------------
+  //     SEND OTP TO USER FOR REGISTRATION & PASSWORD RESET
+  // ------------------------------------------------------------------
+  async sendOTPEmail(email: string, emailMessage: string): Promise<void> {
     try {
       return await this.mailerService.sendMail({
         to: email,
-        subject: 'OTP for Registration',
+        subject: 'One Time Password',
         template: 'otpmail',
         context: {
-          otp: otp,
+          message: emailMessage,
         },
       });
     } catch (error) {

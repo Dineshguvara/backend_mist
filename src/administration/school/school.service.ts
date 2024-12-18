@@ -16,7 +16,9 @@ export class SchoolService {
     private readonly configService: ConfigService,
   ) {}
 
-  // Create a new school
+  // ------------------------------------------------------------------
+  //     CREATE NEW SCHOOL
+  // ------------------------------------------------------------------
   async createSchool(userId: number, createSchoolDto: CreateSchoolDto) {
     try {
       const newSchool = await this.prisma.school.create({
@@ -35,6 +37,9 @@ export class SchoolService {
     }
   }
 
+  // ------------------------------------------------------------------
+  //    FIND ALL SCHOOLS
+  // ------------------------------------------------------------------
   async findAllSchool() {
     try {
       // Get the base URL from the environment variables or default to localhost
@@ -60,7 +65,9 @@ export class SchoolService {
     }
   }
 
-  // Retrieve a single school by ID
+  // ------------------------------------------------------------------
+  //    FINE SINGLE SCHOLL BY ID
+  // ------------------------------------------------------------------
   async findOneSchool(id: number) {
     try {
       const school = await this.prisma.school.findUnique({
@@ -78,7 +85,9 @@ export class SchoolService {
     }
   }
 
-  // Update a school by ID
+  // ------------------------------------------------------------------
+  //     UPDATE A SCHOOL
+  // ------------------------------------------------------------------
   async updateSchool(id: number, updateSchoolDto: UpdateSchoolDto) {
     try {
       const data = updateSchoolDto.imageUrl
@@ -102,8 +111,10 @@ export class SchoolService {
       throw new InternalServerErrorException('Failed to update the school');
     }
   }
-
-  // Delete a school by ID
+  
+  // ------------------------------------------------------------------
+  //     DELETE  A SCHOOL
+  // ------------------------------------------------------------------
   async deleteSchool(id: number) {
     try {
       const deletedSchool = await this.prisma.school.delete({

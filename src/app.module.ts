@@ -7,7 +7,7 @@ import { AuthenticationModule } from './authentication/authentication.module';
 import { ConfigModule } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-import { SchoolModule } from './school/school.module';
+import { SchoolModule } from './administration/school/school.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 

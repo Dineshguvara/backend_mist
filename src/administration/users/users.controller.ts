@@ -29,6 +29,9 @@ import { AuthType } from 'src/authentication/enums/auth-type.enum';
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
+  // ------------------------------------------------------------------
+  //    FIND ALL USER CONTROLLER
+  // ------------------------------------------------------------------
   @Get()
   @ApiOkResponse({ type: UserEntity, isArray: true })
   @ApiOperation({ summary: 'Get all users' })
@@ -36,12 +39,20 @@ export class UsersController {
     return this.userService.findAllUser();
   }
 
+  // ------------------------------------------------------------------
+  //   FIND BY ID CONTROLLER
+  // ------------------------------------------------------------------
+
   @Get(':id')
   @ApiOkResponse({ type: UserEntity })
   @ApiOperation({ summary: 'Get a user by ID' })
   findUserById(@ActiveUser('sub') userId: number) {
     return this.userService.findUserById(userId);
   }
+
+  // ------------------------------------------------------------------
+  //   UPDATE USER CONTROLLER
+  // ------------------------------------------------------------------
 
   @Put(':id')
   @ApiOkResponse({ type: UserEntity })

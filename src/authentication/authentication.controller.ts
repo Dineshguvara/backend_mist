@@ -23,23 +23,23 @@ import {
 
 import { AuthenticationService } from './authentication.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { LoginDto } from './dto/login.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { AccessTokenGuard } from './guards/access-token/access-token.guard';
-import { REQUEST_USER_KEY } from './authentication.constants';
+import {
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
+  InvitationTokenDto,
+  ResendOtpDto,
+  ResetPasswordDto,
+} from './dto/authentication.dto';
 import { AuthType } from './enums/auth-type.enum';
 import { Auth } from './decorators/auth.decorators';
-import { RegisterDto } from './dto/register.dto';
 import { ActiveUser } from './decorators/active-user.decorators';
-import { InvitationTokenDto } from './dto/invite.dto';
 import { Roles } from './decorators/roles/user-role.decorator';
 import { RoleType } from './enums/role-type';
 import { SuperAdminOnly } from './decorators/roles/super-admin-only.decoratot';
 import { OtpService } from './otp/otp.service';
-import { ResendOtpDto } from './dto/otp.dto';
 
-@Auth(AuthType.Bearer)
+@Auth(AuthType.None)
 @Controller('authentication')
 @ApiTags('authentication')
 export class AuthenticationController {
@@ -48,21 +48,27 @@ export class AuthenticationController {
     private readonly OtpService: OtpService,
   ) {}
 
-  @Auth(AuthType.None) // If you want this endpoint to be accessible without authentication
-  @Post('register')
-  @ApiCreatedResponse({ type: RegisterDto })
-  register(@Body() registerDto: RegisterDto) {
-    return this.authenticationService.register(registerDto);
+  // ------------------------------------------------------------------
+  //    LOGIN  CONTROLLER
+  // ------------------------------------------------------------------
+
+  @HttpCode(HttpStatus.OK)
+  @Post('login')
+  @ApiCreatedResponse({ type: LoginDto })
+  login(@Body() loginDto: LoginDto) {
+    return this.authenticationService.login(loginDto);
   }
 
-  // @Auth(AuthType.None)
-  // @Post('register/start')
+  // ------------------------------------------------------------------
+  //    REGISTERING  CONTROLLER
+  // ------------------------------------------------------------------
+
+  // @Post('register/start/generate_otp')
   // async startRegistration(@Body() userDto: RegisterDto) {
   //   return this.authenticationService.startRegistration(userDto);
   // }
-  
-  // @Auth(AuthType.None)
-  // @Post('register/complete')
+
+  // @Post('register/finish/verify_otp')
   // async completeRegistration(
   //   @Body()
   //   {
@@ -78,23 +84,23 @@ export class AuthenticationController {
   //   return this.authenticationService.completeRegistration(email, otp, userDto);
   // }
 
-  // @Auth(AuthType.None)
-  // @Post('register/resend-otp')
+  // @Post('register/resend_otp')
   // @ApiResponse({ status: 201, description: 'OTP resent successfully.' })
   // async resendOtp(@Body() dto: ResendOtpDto) {
-  //    const { otp, expiresAt } = await this.OtpService.resendOtp(dto.email);
-  //    return { message: 'OTP resent successfully', otp, expiresAt };
+  //   return this.authenticationService.resendOtp(dto);
   // }
 
-  @Auth(AuthType.None)
-  @HttpCode(HttpStatus.OK)
-  @Post('login')
-  @ApiCreatedResponse({ type: LoginDto })
-  login(@Body() loginDto: LoginDto) {
-    return this.authenticationService.login(loginDto);
+  @Auth(AuthType.None) // If you want this endpoint to be accessible without authentication
+  @Post('register')
+  @ApiCreatedResponse({ type: RegisterDto })
+  register(@Body() registerDto: RegisterDto) {
+    return this.authenticationService.register(registerDto);
   }
 
-  @Auth(AuthType.None)
+  // ------------------------------------------------------------------
+  //    REFRESH TOKEN   CONTROLLER
+  // ------------------------------------------------------------------
+
   @HttpCode(HttpStatus.OK)
   @Post('refresh-token')
   @ApiCreatedResponse({ type: RefreshTokenDto })
@@ -102,6 +108,7 @@ export class AuthenticationController {
     return this.authenticationService.refreshTokens(refreshTokenDto);
   }
 
+  @Auth(AuthType.Bearer)
   // @SuperAdminOnly()
   @Roles(RoleType.Staff)
   @ApiBearerAuth()
@@ -111,6 +118,10 @@ export class AuthenticationController {
     return { message: 'Access Token is valid!', userId };
   }
 
+  // ------------------------------------------------------------------
+  //    INVITE USER   CONTROLLER
+  // ------------------------------------------------------------------
+  @Auth(AuthType.Bearer)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @Post('invite-user')
@@ -123,6 +134,10 @@ export class AuthenticationController {
     return this.authenticationService.inviteUser(invitationTokenDto, userId);
   }
 
+  // ------------------------------------------------------------------
+  //    LOGOUT USER  CONTROLLER
+  // ------------------------------------------------------------------
+  @Auth(AuthType.Bearer)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @Post('logout')

@@ -35,6 +35,9 @@ import { Request as ExpressRequest } from 'express';
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
 
+  // ------------------------------------------------------------------
+  //     CREATE SCHOOL CONTROLLER WITH IMAGE
+  // ------------------------------------------------------------------
   @Post()
   @ApiOperation({ summary: 'Create a new School' })
   @ApiConsumes('multipart/form-data')
@@ -76,27 +79,43 @@ export class SchoolController {
     });
   }
 
+  // ------------------------------------------------------------------
+  //    GET ALL SCHOOL CONTROLLER FOR AUTHORIZED USER
+  // ------------------------------------------------------------------
   @Get()
   findAllSchool() {
     return this.schoolService.findAllSchool();
   }
 
+  // ------------------------------------------------------------------
+  //     GET ALL SCHOOL  FOR UNAUTHORIZED USED FOR REGISTRATION
+  // ------------------------------------------------------------------
   @Auth(AuthType.None)
   @Get('school-register')
   showAllSchool() {
     return this.schoolService.findAllSchool();
   }
 
+  // ------------------------------------------------------------------
+  //      GET SCHOOL BY ID CONTROLLER - AUTHORIZED
+  // ------------------------------------------------------------------
   @Get(':id')
   findOneSchool(@Param('id') id: string) {
     return this.schoolService.findOneSchool(+id);
   }
 
+  // ------------------------------------------------------------------
+  //      GET SCHOOL BY ID CONTROLLER - UNAUTHORIZED
+  // ------------------------------------------------------------------
   @Auth(AuthType.None)
   @Get('school-register/:id')
   showOneSchool(@Param('id') id: string) {
     return this.schoolService.findOneSchool(+id);
   }
+
+  // ------------------------------------------------------------------
+  //     UPDATE A SCHOOL CONTROLLER WITH IMAGE
+  // ------------------------------------------------------------------
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a School with Image' })
@@ -133,6 +152,9 @@ export class SchoolController {
     });
   }
 
+  // ------------------------------------------------------------------
+  //     DELETE  A SCHOOL CONTROLLER
+  // ------------------------------------------------------------------
   @Delete(':id')
   deleteSchool(@Param('id') id: string) {
     return this.schoolService.deleteSchool(+id);

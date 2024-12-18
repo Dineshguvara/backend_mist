@@ -8,20 +8,26 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { LoginDto } from './dto/login.dto';
+import {
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
+  InvitationTokenDto,
+  ResendOtpDto,
+  ResetPasswordDto,
+} from './dto/authentication.dto';
 import { JwtService } from '@nestjs/jwt';
 import jwtConfig from './config/jwt.config';
 import { ConfigType } from '@nestjs/config';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UsersService } from 'src/administration/users/users.service';
-import { RegisterDto } from './dto/register.dto';
-import { InvitationTokenDto } from './dto/invite.dto';
 import { EMailService } from './e-mail/e-mail.service';
 import * as jwt from 'jsonwebtoken'; // Ensure jwt package is installed and imported
 import { RoleHelperService } from './helper/role-helper.service';
 import { TokenHelperService } from './helper/token-helper.service';
 import { OtpService } from './otp/otp.service';
+import { OtpPurpose } from '@prisma/client';
+
 @Injectable()
 export class AuthenticationService {
   constructor(
@@ -39,6 +45,7 @@ export class AuthenticationService {
   // ------------------------------------------------------------------
   //    REGISTERING NEW USER
   // ------------------------------------------------------------------
+
   async register(
     userDto: RegisterDto,
   ): Promise<{ userId: number; accessToken: string; refreshToken: string }> {
@@ -56,13 +63,22 @@ export class AuthenticationService {
         email: email,
         password: password,
         roleId,
+        schoolId,
       });
+
+      // find role using id
+      const role = await this.prisma.role.findUnique({
+        where: { id: roleId },
+      });
+
+      if (!role) {
+        throw new Error(`Role with ID ${roleId} does not exist`);
+      }
 
       // Perform role-based actions
       await this.roleHelperService.createRoleBasedRecord(
         user.id,
-        roleId,
-        schoolId,
+        role.name,
         name,
       );
 
@@ -93,8 +109,8 @@ export class AuthenticationService {
   //       throw new BadRequestException('Email is already registered.');
   //     }
 
-  //     // Generate OTP and send it to the user's email
-  //     await this.OtpService.generateOtp(email);
+  //     // Generate OTP with a purpose and send it to the user's email
+  //     await this.OtpService.generateOtp(email, OtpPurpose.REGISTRATION);
 
   //     return {
   //       message: 'OTP has been sent to your email. Please verify to proceed.',
@@ -116,7 +132,11 @@ export class AuthenticationService {
   // ): Promise<{ userId: number; accessToken: string; refreshToken: string }> {
   //   try {
   //     // Verify the OTP
-  //     const isOtpValid = await this.OtpService.verifyOtp(email, otp);
+  //     const isOtpValid = await this.OtpService.verifyOtp(
+  //       email,
+  //       otp,
+  //       OtpPurpose.REGISTRATION,
+  //     );
   //     if (!isOtpValid) {
   //       throw new BadRequestException('Invalid or expired OTP.');
   //     }
@@ -134,18 +154,27 @@ export class AuthenticationService {
   //       email: email,
   //       password: password,
   //       roleId,
+  //       schoolId,
   //     });
+
+  //     // find role using id
+  //     const role = await this.prisma.role.findUnique({
+  //       where: { id: roleId },
+  //     });
+
+  //     if (!role) {
+  //       throw new Error(`Role with ID ${roleId} does not exist`);
+  //     }
 
   //     // Perform role-based actions
   //     await this.roleHelperService.createRoleBasedRecord(
   //       user.id,
-  //       roleId,
-  //       schoolId,
+  //       role.name,
   //       name,
   //     );
 
   //     // Delete all OTPs related to this email
-  //     await this.OtpService.deleteOtpByEmail(email);
+  //     await this.OtpService.deleteOtpByEmail(email, OtpPurpose.REGISTRATION);
 
   //     // Generate and return tokens
   //     const tokens = await this.tokenHelperService.generateTokens(user);
@@ -162,6 +191,20 @@ export class AuthenticationService {
   //     throw new InternalServerErrorException(
   //       'Error during registration completion.',
   //     );
+  //   }
+  // }
+
+  // async resendOtp(dto: ResendOtpDto) {
+  //   try {
+  //     const { otp, expiresAt } = await this.OtpService.resendOtp(
+  //       dto.email,
+  //       dto.purpose,
+  //     );
+  //     return { message: 'OTP resent successfully', otp, expiresAt };
+  //   } catch (error) {
+  //     const err = error as Error;
+  //     console.error(`Error creating role: ${err.message}`);
+  //     throw new InternalServerErrorException('Failed to create role');
   //   }
   // }
 
@@ -227,7 +270,7 @@ export class AuthenticationService {
       // Check if the refresh token has expired
       if (tokenRecord.expiresAt < new Date()) {
         console.error('Refresh token has expired. Invalidating token.');
-        await this.tokenHelperService.invalidateRefreshToken(refreshTokenId);
+        await this.tokenHelperService.removeRefreshToken(refreshTokenId);
         return false; // Frontend should handle logout
       }
 
@@ -243,7 +286,7 @@ export class AuthenticationService {
       }
 
       // Invalidate the current refresh token
-      await this.tokenHelperService.invalidateRefreshToken(refreshTokenId);
+      await this.tokenHelperService.removeRefreshToken(refreshTokenId);
 
       // Generate and return new tokens
       return await this.tokenHelperService.generateTokens(user);

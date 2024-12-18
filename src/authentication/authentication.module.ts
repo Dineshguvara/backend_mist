@@ -17,6 +17,11 @@ import { EMailService } from './e-mail/e-mail.service';
 import { RoleHelperService } from './helper/role-helper.service';
 import { TokenHelperService } from './helper/token-helper.service';
 import { OtpService } from './otp/otp.service';
+import { ForgetPasswordController } from './forget-password/forget-password.controller';
+import { ForgetPasswordService } from './forget-password/forget-password.service';
+import { DummyDataController } from './dummy/dummy-data.controller';
+import { DummyDataService } from './dummy/dummy-data.service';
+
 @Module({
   providers: [
     {
@@ -35,12 +40,18 @@ import { OtpService } from './otp/otp.service';
     RoleHelperService,
     TokenHelperService,
     OtpService,
+    ForgetPasswordService,
+    DummyDataService,
     // {
     //   provide: HashingService,
     //   useClass: BcryptService,
     // },
   ],
-  controllers: [AuthenticationController],
+  controllers: [
+    AuthenticationController,
+    ForgetPasswordController,
+    DummyDataController,
+  ],
   imports: [
     PassportModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),

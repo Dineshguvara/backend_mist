@@ -7,6 +7,9 @@ CREATE TYPE "PrincipalType" AS ENUM ('PRINCIPAL', 'VICE_PRINCIPAL');
 -- CreateEnum
 CREATE TYPE "StaffType" AS ENUM ('OFFICE_STAFF', 'SWEEPING_STAFF', 'CLASS_ROOM_STAFF');
 
+-- CreateEnum
+CREATE TYPE "OtpPurpose" AS ENUM ('REGISTRATION', 'PASSWORD_RESET', 'FORGET_PASSWORD');
+
 -- CreateTable
 CREATE TABLE "SuperAdmin" (
     "id" SERIAL NOT NULL,
@@ -31,6 +34,8 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "roleId" INTEGER NOT NULL,
+    "schoolId" INTEGER,
+    "approvalStatus" TEXT NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -49,10 +54,24 @@ CREATE TABLE "RefreshToken" (
 );
 
 -- CreateTable
+CREATE TABLE "otp" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "otp" TEXT NOT NULL,
+    "purpose" "OtpPurpose" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "isUsed" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "otp_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "School" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "address" TEXT,
+    "imageUrl" TEXT,
     "createdBy" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -60,12 +79,21 @@ CREATE TABLE "School" (
 );
 
 -- CreateTable
+CREATE TABLE "DummyData" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "age" INTEGER NOT NULL,
+    "email" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "DummyData_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Admin" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "schoolId" INTEGER NOT NULL,
-    "type" "AdminType",
 
     CONSTRAINT "Admin_pkey" PRIMARY KEY ("id")
 );
@@ -75,8 +103,6 @@ CREATE TABLE "Principal" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "schoolId" INTEGER NOT NULL,
-    "type" "PrincipalType",
 
     CONSTRAINT "Principal_pkey" PRIMARY KEY ("id")
 );
@@ -86,7 +112,6 @@ CREATE TABLE "Staff" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "schoolId" INTEGER NOT NULL,
     "type" "StaffType",
 
     CONSTRAINT "Staff_pkey" PRIMARY KEY ("id")
@@ -97,7 +122,6 @@ CREATE TABLE "Student" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "schoolId" INTEGER NOT NULL,
 
     CONSTRAINT "Student_pkey" PRIMARY KEY ("id")
 );
@@ -110,6 +134,9 @@ CREATE UNIQUE INDEX "Role_name_key" ON "Role"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DummyData_email_key" ON "DummyData"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Admin_userId_key" ON "Admin"("userId");
@@ -133,31 +160,22 @@ ALTER TABLE "Role" ADD CONSTRAINT "Role_createdBy_fkey" FOREIGN KEY ("createdBy"
 ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "User" ADD CONSTRAINT "User_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "RefreshToken" ADD CONSTRAINT "RefreshToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "School" ADD CONSTRAINT "School_SuperAdmin_fkey" FOREIGN KEY ("createdBy") REFERENCES "SuperAdmin"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Admin" ADD CONSTRAINT "Admin_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Admin" ADD CONSTRAINT "Admin_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Principal" ADD CONSTRAINT "Principal_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Principal" ADD CONSTRAINT "Principal_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Staff" ADD CONSTRAINT "Staff_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Staff" ADD CONSTRAINT "Staff_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Student" ADD CONSTRAINT "Student_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Student" ADD CONSTRAINT "Student_schoolId_fkey" FOREIGN KEY ("schoolId") REFERENCES "School"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

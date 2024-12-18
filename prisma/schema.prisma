@@ -33,8 +33,14 @@ enum StaffType {
   CLASS_ROOM_STAFF
 }
 
+enum OtpPurpose {
+  REGISTRATION
+  PASSWORD_RESET
+  FORGET_PASSWORD
+}
+
 // ------------------------------------------------------------------
-//   01.  SUPR ADMIN MODEL 
+//   01.  SUPER ADMIN MODEL 
 // ------------------------------------------------------------------
 model SuperAdmin {
   id     Int      @id @default(autoincrement())
@@ -61,15 +67,17 @@ model Role {
 //   03.  USER MODEL 
 // ------------------------------------------------------------------
 model User {
-  id           Int    @id @default(autoincrement())
-  email        String @unique
-  password     String
-  roleId       Int
-  role         Role   @relation("AssignedRoles", fields: [roleId], references: [id])
-  createdRoles Role[] @relation("CreatedRoles")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  email          String   @unique
+  password       String
+  roleId         Int
+  schoolId       Int? // Nullable for SuperAdmins or users without a specific school
+  role           Role     @relation("AssignedRoles", fields: [roleId], references: [id])
+  school         School?  @relation("AssignedSchools", fields: [schoolId], references: [id])
+  createdRoles   Role[]   @relation("CreatedRoles")
+  approvalStatus String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
   superAdmin    SuperAdmin?
@@ -92,90 +100,88 @@ model RefreshToken {
   expiresAt      DateTime
   user           User     @relation(fields: [userId], references: [id])
 }
+
 // ------------------------------------------------------------------
-//   04.  OTP MODEL (validate email id)
+//   05.  OTP MODEL (validate email id)
 // ------------------------------------------------------------------
 
 model otp {
-  id         String   @id @default(cuid()) // Unique identifier for each OTP
-  email      String   // Email address associated with the OTP
-  otp        String   // The OTP itself
-  createdAt  DateTime @default(now()) // Timestamp when the OTP was generated
-  expiresAt  DateTime // Expiration timestamp
-  isUsed     Boolean  @default(false) // Whether the OTP has been used
+  id        String     @id @default(cuid()) // Unique identifier for each OTP
+  email     String // Email address associated with the OTP
+  otp       String // The OTP itself
+  purpose   OtpPurpose // Enum to specify the purpose of the OTP
+  createdAt DateTime   @default(now()) // Timestamp when the OTP was generated
+  expiresAt DateTime // Expiration timestamp
+  isUsed    Boolean    @default(false) // Whether the OTP has been used
 }
 
 // ------------------------------------------------------------------
-//   05.   SCHOOL MODEL 
+//   06.   SCHOOL MODEL 
 // ------------------------------------------------------------------
 model School {
-  id         Int     @id @default(autoincrement())
-  name       String
-  address    String?
-  imageUrl   String?
-  createdBy  Int
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  imageUrl  String?
+  createdBy Int
+  createdAt DateTime @default(now())
 
   superAdmin SuperAdmin? @relation(fields: [createdBy], references: [id], map: "School_SuperAdmin_fkey")
-
-  admins     Admin[] // A school can have multiple admins
-  principals Principal[] // A school can have two principals
-  staff      Staff[] // A school can have multiple staff
-  students   Student[] // A school can have multiple students
-
-  createdAt  DateTime @default(now())
+  users      User[]      @relation("AssignedSchools")
 }
 
 // ------------------------------------------------------------------
-//   06.   ADMIN MODEL FOR ONE SCHOOL 
+//   07.   SCHOOL MODEL 
+// ------------------------------------------------------------------
+model DummyData {
+  id        Int      @id @default(autoincrement())
+  name      String
+  age       Int
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ------------------------------------------------------------------
+//   08.   ADMIN MODEL FOR ONE SCHOOL 
 // ------------------------------------------------------------------
 model Admin {
-  id       Int       @id @default(autoincrement())
-  name     String
-  userId   Int       @unique
-  schoolId Int
-  type     AdminType? // Enum to distinguish admin roles
+  id     Int    @id @default(autoincrement())
+  name   String
+  userId Int    @unique
 
-  school School @relation(fields: [schoolId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id]) // Reverse relation
 }
 
 // ------------------------------------------------------------------
-//   07.   PRINCIPAL INFO MODEL  
+//   09.   PRINCIPAL INFO MODEL  
 // ------------------------------------------------------------------
 model Principal {
-  id       Int           @id @default(autoincrement())
-  name     String
-  userId   Int           @unique
-  schoolId Int
-  type     PrincipalType? // Enum to distinguish between Principal and VicePrincipal
+  id     Int    @id @default(autoincrement())
+  name   String
+  userId Int    @unique
 
-  school School @relation(fields: [schoolId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id]) // Reverse relation
 }
 
 // ------------------------------------------------------------------
-//   08.   STAFF INFO MODEL 
+//   10.   STAFF INFO MODEL 
 // ------------------------------------------------------------------
 model Staff {
-  id       Int       @id @default(autoincrement())
-  name     String
-  userId   Int       @unique
-  schoolId Int
-  type     StaffType? // Enum to distinguish staff roles
+  id     Int        @id @default(autoincrement())
+  name   String
+  userId Int        @unique
+  type   StaffType? // Enum to distinguish staff roles
 
-  school School @relation(fields: [schoolId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id]) // Reverse relation
 }
 
 // ------------------------------------------------------------------
-//   09.   STUDENT INFO MODEL 
+//   11.   STUDENT INFO MODEL 
 // ------------------------------------------------------------------
 model Student {
-  id       Int    @id @default(autoincrement())
-  name     String
-  userId   Int    @unique
-  schoolId Int
+  id     Int    @id @default(autoincrement())
+  name   String
+  userId Int    @unique
 
-  user   User   @relation(fields: [userId], references: [id])
-  school School @relation(fields: [schoolId], references: [id])
+  user User @relation(fields: [userId], references: [id]) // Reverse relation
 }
